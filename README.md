@@ -2,7 +2,8 @@ This repository implements a binary medical image classification pipeline using 
 
 ## Dataset Structure
 Download dataset from ```https://challenge.isic-archive.com/data/#2019```
-## Download Synthetic data from ```https://drive.google.com/drive/folders/1Dwm3-4xMc6_UB974PE5cL5Nwy9O26KJX?usp=drive_link```
+
+Download Synthetic data from ```https://drive.google.com/drive/folders/1Dwm3-4xMc6_UB974PE5cL5Nwy9O26KJX?usp=drive_link```
 ```
 SYN_EXPERIMENTS/
 │
