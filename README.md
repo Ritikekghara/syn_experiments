@@ -29,7 +29,7 @@ syn_experiments/
 │
 ├── evaluate_thresholds.py           # Threshold evaluation entry point
 ├── generate_dataset_with_jsd.py     # Dataset synthesis/analysis helper
-├── threshold_train_main.py          # Training entry point for thresholding
+├── main.py          # Training entry point for thresholding
 ├── requirements.txt                 # Python dependencies
 ├── README.md                        # Project documentation
 │
@@ -53,8 +53,15 @@ syn_experiments/
 ```
 pip install -r requirements.txt
 ```
-## Run the Script
-
+## split the dataset by running
+```
+python split_data.py
+```
+## Generate the jsd of the dataset
+```
+python generate_dataset_with_jsd.py
+```
+## Run the script for final training
 ```
 python main.py
 ```
