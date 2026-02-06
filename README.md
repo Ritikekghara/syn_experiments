@@ -53,8 +53,15 @@ syn_experiments/
 ```
 pip install -r requirements.txt
 ```
-## Run the Script
-
+## split the dataset by running
+```
+python split_data.py
+```
+## Generate the jsd of the dataset
+```
+python generate_dataset_with_jsd.py
+```
+## Run the script for final training
 ```
 python main.py
 ```
