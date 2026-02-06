@@ -29,7 +29,7 @@ syn_experiments/
 │
 ├── evaluate_thresholds.py           # Threshold evaluation entry point
 ├── generate_dataset_with_jsd.py     # Dataset synthesis/analysis helper
-├── threshold_train_main.py          # Training entry point for thresholding
+├── main.py          # Training entry point for thresholding
 ├── requirements.txt                 # Python dependencies
 ├── README.md                        # Project documentation
 │
