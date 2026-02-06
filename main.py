@@ -1,5 +1,6 @@
 import sys
 import os
+import argparse
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 
 import torch
@@ -40,20 +41,63 @@ threshold/training/train.py and set: use_entromix = False
 """
 
 
-def main():
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description="Threshold-based curriculum learning training"
+    )
+    parser.add_argument("--data-dir", default="data", help="Dataset root directory")
+    parser.add_argument("--batch-size", type=int, default=32, help="Batch size")
+    parser.add_argument("--num-workers", type=int, default=0, help="DataLoader workers")
+    parser.add_argument("--learning-rate", type=float, default=0.003, help="Learning rate")
+    parser.add_argument("--epochs", type=int, default=20, help="Number of epochs")
+    parser.add_argument("--dataset-csv", default="dataset.csv", help="Dataset CSV file")
+    parser.add_argument(
+        "--model",
+        dest="model_choice",
+        default="resnet50",
+        choices=["resnet50", "vit", "swin"],
+        help="Model choice",
+    )
+    parser.add_argument(
+        "--device",
+        default='cuda' if torch.cuda.is_available() else 'cpu',
+        help="Device override, e.g. 'cpu' or 'cuda'. Default: auto",
+    )
+    parser.add_argument(
+        "--warmup-epochs",
+        type=int,
+        default=15,
+        help="Epochs with real-only data",
+    )
+    parser.add_argument(
+        "--jsd-start",
+        type=float,
+        default=0.2,
+        help="Starting JSD threshold for synthetic data",
+    )
+    parser.add_argument(
+        "--jsd-end",
+        type=float,
+        default=0.8,
+        help="Ending JSD threshold for synthetic data",
+    )
+    return parser.parse_args()
+
+
+def main(args):
     """
     Main training script with threshold-based curriculum learning.
     """
-    
+
     # ============= CONFIG =============
-    device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    data_dir = 'data'
-    batch_size = 32
-    num_workers = 0
-    learning_rate = 0.003
-    epochs = 20
-    dataset_csv = 'dataset.csv'
-    model_choice = 'resnet50'  # Options: 'resnet50', 'vit', 'swin', 'efficientnet_resnet', 'dual_backbone'
+    device = args.device or ('cuda' if torch.cuda.is_available() else 'cpu')
+    data_dir = args.data_dir
+    batch_size = args.batch_size
+    num_workers = args.num_workers
+    learning_rate = args.learning_rate
+    epochs = args.epochs
+    dataset_csv = args.dataset_csv
+    model_choice = args.model_choice
     
     print("="*70)
     print("THRESHOLD-BASED CURRICULUM LEARNING")
@@ -66,9 +110,9 @@ def main():
     print(f"Model: {model_choice}\n")
     
     # ============= CURRICULUM PACE =============
-    warmup_epochs = 15              # Phase 1: real-only
-    jsd_threshold_start = 0.2       # Start admitting very clean synthetic
-    jsd_threshold_end = 0.8        # End by admitting all synthetic
+    warmup_epochs = args.warmup_epochs     # Phase 1: real-only
+    jsd_threshold_start = args.jsd_start   # Start admitting very clean synthetic
+    jsd_threshold_end = args.jsd_end       # End by admitting all synthetic
     
     print("Curriculum:")
     print(f"  Epochs 0-{warmup_epochs-1}: real-only (no synthetic)")
@@ -88,10 +132,6 @@ def main():
     elif model_choice == 'swin':
         model = SwinTransformer(num_classes=2, freeze_backbones=False)
         print(f"[OK] Model loaded: Swin Transformer")
-    
-    elif model_choice == 'efficientnet_resnet':
-        model = EfficientNetResNetFusion(num_classes=2, freeze_backbones=False)
-        print(f"[OK] Model loaded: EfficientNet + ResNet Fusion")
     else:
         raise ValueError(f"Unknown model: {model_choice}")
     
@@ -148,4 +188,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    main(parse_args())
