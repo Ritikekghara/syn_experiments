@@ -1,7 +1,7 @@
 This repository implements a binary medical image classification pipeline using a pretrained ResNet-18 backbone. The framework supports curriculum learning with synthetic data, class imbalance handling, and comprehensive evaluation metrics.
 
 ## Dataset Structure
-
+Download dataset from ```https://challenge.isic-archive.com/data/#2019```
 ```
 SYN_EXPERIMENTS/
 │
