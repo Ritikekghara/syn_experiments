@@ -46,10 +46,10 @@ def parse_args():
         description="Threshold-based curriculum learning training"
     )
     parser.add_argument("--data-dir", default="data", help="Dataset root directory")
-    parser.add_argument("--batch-size", type=int, default=32, help="Batch size")
+    parser.add_argument("--batch-size", type=int, default=16, help="Batch size")
     parser.add_argument("--num-workers", type=int, default=0, help="DataLoader workers")
-    parser.add_argument("--learning-rate", type=float, default=0.003, help="Learning rate")
-    parser.add_argument("--epochs", type=int, default=20, help="Number of epochs")
+    parser.add_argument("--learning-rate", type=float, default=0.0003, help="Learning rate")
+    parser.add_argument("--epochs", type=int, default=120, help="Number of epochs")
     parser.add_argument("--dataset-csv", default="dataset.csv", help="Dataset CSV file")
     parser.add_argument(
         "--model",
@@ -66,20 +66,36 @@ def parse_args():
     parser.add_argument(
         "--warmup-epochs",
         type=int,
-        default=15,
+        default=20,
         help="Epochs with real-only data",
     )
     parser.add_argument(
         "--jsd-start",
         type=float,
-        default=0.2,
+        default=0.03,
         help="Starting JSD threshold for synthetic data",
     )
     parser.add_argument(
         "--jsd-end",
         type=float,
-        default=0.8,
+        default=1.0,
         help="Ending JSD threshold for synthetic data",
+    )
+    parser.add_argument(
+        "--resume",
+        default=None,
+        help="Path to checkpoint (.pth) to resume from",
+    )
+    parser.add_argument(
+        "--checkpoint-dir",
+        default="outputs/checkpoints",
+        help="Directory to save checkpoints",
+    )
+    parser.add_argument(
+        "--save-every",
+        type=int,
+        default=1,
+        help="Save checkpoint every N epochs",
     )
     return parser.parse_args()
 
@@ -146,6 +162,34 @@ def main(args):
         weight_decay=0.0005
     )
     scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs)
+
+    # ============= RESUME (OPTIONAL) =============
+    start_epoch = 0
+    history = None
+    if args.resume:
+        print(f"Loading checkpoint: {args.resume}")
+        checkpoint = torch.load(args.resume, map_location=device)
+        if isinstance(checkpoint, dict) and "model_state_dict" in checkpoint:
+            model.load_state_dict(checkpoint["model_state_dict"])
+
+            if "optimizer_state_dict" in checkpoint:
+                optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+                for state in optimizer.state.values():
+                    for key, value in state.items():
+                        if torch.is_tensor(value):
+                            state[key] = value.to(device)
+
+            if "scheduler_state_dict" in checkpoint and scheduler is not None:
+                scheduler_state = checkpoint.get("scheduler_state_dict")
+                if scheduler_state:
+                    scheduler.load_state_dict(scheduler_state)
+
+            start_epoch = int(checkpoint.get("epoch", -1)) + 1
+            history = checkpoint.get("history")
+            print(f"[OK] Resuming from epoch {start_epoch}")
+        else:
+            model.load_state_dict(checkpoint)
+            print("[OK] Loaded model weights only (no optimizer/scheduler state)")
     
     # ============= DATA LOADERS =============
     val_loader = get_val_loader(data_dir, batch_size, num_workers=num_workers)
@@ -165,6 +209,7 @@ def main(args):
         optimizer=optimizer,
         device=device,
         epochs=epochs,
+        start_epoch=start_epoch,
         batch_size=batch_size,
         schedule=None,
         warmup_epochs=warmup_epochs,
@@ -173,7 +218,10 @@ def main(args):
         get_train_loader=get_train_loader_threshold,
         scheduler=scheduler,
         dataset_csv=dataset_csv,
-        num_workers=num_workers
+        num_workers=num_workers,
+        checkpoint_dir=args.checkpoint_dir,
+        save_every=args.save_every,
+        history=history
     )
     
     # ============= SAVE MODEL =============

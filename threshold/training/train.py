@@ -79,7 +79,12 @@ def train_model_threshold(
     dataset_csv='dataset.csv',
     warmup_epochs=10,
     jsd_start=0.1,
-    jsd_end=1.0
+    jsd_end=1.0,
+    num_workers=0,
+    start_epoch=0,
+    checkpoint_dir=None,
+    save_every=1,
+    history=None
 ):
     """
     Train model with threshold-based curriculum learning using EntroMixLoss.
@@ -101,6 +106,11 @@ def train_model_threshold(
         warmup_epochs: Epochs with real-only data (no synthetic)
         jsd_start: JSD threshold to start admitting synthetic after warmup
         jsd_end: JSD threshold reached by the final epoch
+        num_workers: Number of DataLoader workers
+        start_epoch: Epoch index to start from when resuming
+        checkpoint_dir: Directory to save checkpoints (None to disable)
+        save_every: Save checkpoint every N epochs
+        history: Optional history dict to continue plots/metrics
     
     Returns:
             num_workers: Number of DataLoader workers
@@ -122,9 +132,11 @@ def train_model_threshold(
     # class_weights = torch.tensor([803/1569, 1569/803]).to(device)
     val_criterion = nn.CrossEntropyLoss()
     
-    train_losses, val_losses = [], []
-    train_recalls, val_recalls = [], []
-    train_losses_detailed = []
+    train_losses = list(history.get('train_losses', [])) if history else []
+    val_losses = list(history.get('val_losses', [])) if history else []
+    train_recalls = list(history.get('train_recalls', [])) if history else []
+    val_recalls = list(history.get('val_recalls', [])) if history else []
+    train_losses_detailed = list(history.get('train_losses_detailed', [])) if history else []
     
     all_val_preds = []
     all_val_labels = []
@@ -137,7 +149,10 @@ def train_model_threshold(
         progress = max(0.0, min(1.0, progress))
         return jsd_start + progress * (jsd_end - jsd_start)
 
-    for epoch in range(epochs):
+    if checkpoint_dir:
+        os.makedirs(checkpoint_dir, exist_ok=True)
+
+    for epoch in range(start_epoch, epochs):
         # ---- Select threshold for this epoch ----
         current_threshold = compute_epoch_threshold(epoch)
         
@@ -225,6 +240,25 @@ def train_model_threshold(
         
         current_lr = optimizer.param_groups[0]["lr"]
         print(f"Train Loss: {avg_train_loss:.4f} | Val Loss: {avg_val_loss:.4f} | LR: {current_lr:.6f}")
+
+        if checkpoint_dir and save_every > 0:
+            if ((epoch + 1) % save_every == 0) or ((epoch + 1) == epochs):
+                checkpoint = {
+                    "epoch": epoch,
+                    "model_state_dict": model.state_dict(),
+                    "optimizer_state_dict": optimizer.state_dict(),
+                    "scheduler_state_dict": scheduler.state_dict() if scheduler else None,
+                    "history": {
+                        "train_losses": train_losses,
+                        "val_losses": val_losses,
+                        "train_recalls": train_recalls,
+                        "val_recalls": val_recalls,
+                        "train_losses_detailed": train_losses_detailed
+                    }
+                }
+                last_path = os.path.join(checkpoint_dir, "last.pth")
+                torch.save(checkpoint, last_path)
+                print(f"[OK] Checkpoint saved: {last_path}")
     
     # -------- FINAL METRICS ON TEST SET --------
     os.makedirs("outputs/plots", exist_ok=True)
