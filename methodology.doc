@@ -1,0 +1,54 @@
+METHODOLOGY
+
+1. Problem Definition
+This work addresses binary skin lesion classification, where each dermoscopic image is categorized as either benign (class 0) or malignant (class 1). The objective is to improve malignant-class detection while maintaining balanced overall performance using real and synthetic training data.
+
+2. Data Preparation and Split Strategy
+The dataset is organized into train, validation, and test subsets, with real images used across all splits and synthetic images used only during training. The validation and test sets contain only real images to ensure realistic performance estimation. A dedicated script is used for reproducible data splitting into train/val/test partitions.
+
+3. Synthetic Data Quality Estimation with JSD
+To control synthetic data quality, each synthetic sample is assigned a Jensen-Shannon Divergence (JSD) score. JSD is computed from Monte Carlo Dropout predictions by running multiple stochastic forward passes and measuring predictive disagreement. Lower JSD indicates more stable and potentially higher-quality synthetic samples, while higher JSD indicates uncertain samples.
+
+4. Input Processing and Augmentation
+All images are resized to 224 x 224 and normalized using ImageNet statistics. Training-time augmentation includes random horizontal and vertical flips, small rotations, color jittering, and affine perturbations. Validation and test pipelines apply only deterministic resize and normalization.
+
+5. Model Architecture
+The primary model is a pretrained ResNet-50. The backbone is frozen and the final fully connected layer is replaced with a two-class classifier head. The training entry point also supports Vision Transformer (ViT) and Swin Transformer alternatives for comparative experiments.
+
+6. Curriculum Learning with Threshold Scheduling
+Training follows a threshold-based curriculum:
+- Warmup phase: only real images are used.
+- Curriculum phase: synthetic samples are gradually introduced according to a linearly increasing JSD threshold from jsd_start to jsd_end.
+This pacing strategy allows the model to learn from easier synthetic examples first and progressively incorporate harder ones.
+
+7. EntroMixLoss (Dynamic Divergence Gate)
+The training objective uses EntroMixLoss, a gated per-sample cross-entropy formulation:
+- Real samples always contribute to the loss.
+- Synthetic samples contribute only when their JSD is below the current pacing threshold.
+This dynamic gate aligns loss contribution with sample reliability and the current curriculum stage.
+
+8. Batch Sampling Strategy
+A custom threshold-based batch sampler enforces synthetic eligibility by JSD and preserves the real-data class ratio (approximately benign:malignant = 3:1) in the real portion of each batch. Synthetic samples are distributed across batches once they become eligible under the current threshold.
+
+9. Optimization and Training Configuration
+The model is trained using SGD with momentum and weight decay, combined with cosine annealing learning-rate scheduling. Class imbalance is handled through class-weighted loss terms. Checkpointing is performed periodically to support resumption and experiment stability.
+
+10. Evaluation Protocol
+During training, epoch-wise train and validation losses are tracked, and recall-oriented monitoring is emphasized for the malignant class. After training, final evaluation is performed on the held-out real test set. Reported metrics include:
+- Accuracy
+- Recall/Sensitivity (malignant)
+- Specificity (benign)
+- F1-score
+- Confusion matrix
+Loss curves, recall curves, and confusion matrix plots are saved for analysis.
+
+11. Operating-Threshold Analysis
+A separate threshold-evaluation script tests multiple decision thresholds on predicted malignant probabilities. This produces trade-off curves and summary tables to select deployment thresholds based on clinical priorities (e.g., maximizing recall vs. balancing specificity).
+
+12. Reproducibility Workflow
+The end-to-end pipeline is executed through scripts in sequence:
+1) split_data.py
+2) generate_dataset_with_jsd.py
+3) main.py
+4) evaluate_thresholds.py
+This workflow ensures consistent data preparation, curriculum training, and threshold calibration.

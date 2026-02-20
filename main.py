@@ -48,8 +48,8 @@ def parse_args():
     parser.add_argument("--data-dir", default="data", help="Dataset root directory")
     parser.add_argument("--batch-size", type=int, default=16, help="Batch size")
     parser.add_argument("--num-workers", type=int, default=0, help="DataLoader workers")
-    parser.add_argument("--learning-rate", type=float, default=0.0003, help="Learning rate")
-    parser.add_argument("--epochs", type=int, default=120, help="Number of epochs")
+    parser.add_argument("--learning-rate", type=float, default=0.03, help="Learning rate")
+    parser.add_argument("--epochs", type=int, default=140, help="Number of epochs")
     parser.add_argument("--dataset-csv", default="dataset.csv", help="Dataset CSV file")
     parser.add_argument(
         "--model",
@@ -66,7 +66,7 @@ def parse_args():
     parser.add_argument(
         "--warmup-epochs",
         type=int,
-        default=20,
+        default=0,
         help="Epochs with real-only data",
     )
     parser.add_argument(
@@ -96,6 +96,19 @@ def parse_args():
         type=int,
         default=1,
         help="Save checkpoint every N epochs",
+    )
+    parser.add_argument(
+        "--use-entromix",
+        dest="use_entromix",
+        action="store_true",
+        default=True,
+        help="Use EntroMixLoss (default: enabled)",
+    )
+    parser.add_argument(
+        "--no-entromix",
+        dest="use_entromix",
+        action="store_false",
+        help="Disable EntroMixLoss and use standard CrossEntropyLoss",
     )
     return parser.parse_args()
 
@@ -161,7 +174,7 @@ def main(args):
         momentum=0.9,
         weight_decay=0.0005
     )
-    scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs)
+    scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs,eta_min=1e-6)
 
     # ============= RESUME (OPTIONAL) =============
     start_epoch = 0
@@ -221,7 +234,8 @@ def main(args):
         num_workers=num_workers,
         checkpoint_dir=args.checkpoint_dir,
         save_every=args.save_every,
-        history=history
+        history=history,
+        use_entromix=args.use_entromix
     )
     
     # ============= SAVE MODEL =============

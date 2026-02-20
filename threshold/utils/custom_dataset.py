@@ -8,9 +8,9 @@ class CytologyCombinedDataset(Dataset):
         self.synth_ds = datasets.ImageFolder(synth_root, transform=transform)
 
         # Sanity checks
-        # ImageFolder sorts classes alphabetically, so ["BNV", "MEL"] is expected
-        assert self.real_ds.classes == ["BNV", "MEL"], f"Expected classes ['BNV', 'MEL'], got {self.real_ds.classes}"
-        assert self.synth_ds.classes == ["MEL"], f"Expected classes ['MEL'], got {self.synth_ds.classes}"  # only MEL synthetic images
+        # ImageFolder sorts classes alphabetically, so ["benign", "malignant"] is expected
+        assert self.real_ds.classes == ["benign", "malignant"], f"Expected classes ['benign', 'malignant'], got {self.real_ds.classes}"
+        assert self.synth_ds.classes == ["malignant"], f"Expected classes ['malignant'], got {self.synth_ds.classes}"  # only malignant synthetic images
 
         self.real_len = len(self.real_ds)
         self.synth_len = len(self.synth_ds)

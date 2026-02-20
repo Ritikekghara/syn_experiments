@@ -84,7 +84,8 @@ def train_model_threshold(
     start_epoch=0,
     checkpoint_dir=None,
     save_every=1,
-    history=None
+    history=None,
+    use_entromix=True
 ):
     """
     Train model with threshold-based curriculum learning using EntroMixLoss.
@@ -118,8 +119,6 @@ def train_model_threshold(
     """
     
     # Loss function
-    use_entromix = True  # Set to False to use standard CrossEntropyLoss
-    
     if use_entromix:
         criterion = EntroMixLoss(device)
         print("[OK] Using EntroMixLoss with Dynamic Divergence Gate")
